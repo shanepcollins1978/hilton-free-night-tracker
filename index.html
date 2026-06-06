@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#123c8c" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="Hilton Tracker" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <title>Hilton Free Night Tracker</title>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="apple-touch-icon" href="icon.svg" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <main class="app-shell">
+    <header class="app-header">
+      <div>
+        <p class="eyebrow">Hilton Free Night Tracking</p>
+        <h1>Hilton Tracker</h1>
+        <p class="subhead">Track annual spending toward free night certificates.</p>
+      </div>
+      <div class="year-badge" id="trackingYear"></div>
+    </header>
+
+    <section class="dashboard">
+      <div class="dashboard-card">
+        <span>Total Hilton Spend</span>
+        <strong id="householdTotal">$0</strong>
+      </div>
+      <div class="dashboard-card">
+        <span>Certificates Earned</span>
+        <strong id="certificatesEarned">0 of 4</strong>
+      </div>
+      <div class="dashboard-card">
+        <span>Next Certificate</span>
+        <strong id="nextCertificate">$0</strong>
+      </div>
+    </section>
+
+    <section id="trackers" class="tracker-list"></section>
+
+    <section class="tools-card">
+      <h2>Backup & New Year Tools</h2>
+      <p>Export a CSV backup before resetting for a new calendar year.</p>
+      <div class="tool-buttons">
+        <button id="exportCsv">Export CSV</button>
+        <label class="import-label">
+          Import CSV
+          <input type="file" id="importCsv" accept=".csv" />
+        </label>
+        <button id="resetAll" class="danger">Reset Year</button>
+      </div>
+    </section>
+  </main>
+
+  <template id="trackerTemplate">
+    <article class="tracker-card">
+      <div class="tracker-top">
+        <div>
+          <p class="card-type"></p>
+          <h2 class="card-title"></h2>
+        </div>
+        <button class="add-toggle" type="button">+ Add</button>
+      </div>
+
+      <div class="card-stats">
+        <div>
+          <span>Spent</span>
+          <strong class="spent">$0</strong>
+        </div>
+        <div>
+          <span>Remaining</span>
+          <strong class="remaining">$0</strong>
+        </div>
+        <div>
+          <span>Complete</span>
+          <strong class="complete">0%</strong>
+        </div>
+      </div>
+
+      <div class="main-progress">
+        <div class="main-progress-fill"></div>
+      </div>
+
+      <div class="milestones"></div>
+
+      <form class="entry-form hidden">
+        <input class="date-input" type="date" required />
+        <input class="merchant-input" type="text" placeholder="Merchant or note" />
+        <input class="amount-input" type="number" min="0.01" step="0.01" placeholder="Amount" required />
+        <button type="submit">Save Transaction</button>
+      </form>
+
+      <div class="transactions-wrap">
+        <div class="transactions-title">
+          <h3>Transactions</h3>
+          <button class="clear-card" type="button">Clear Card</button>
+        </div>
+        <ul class="transactions"></ul>
+      </div>
+    </article>
+  </template>
+
+  <script src="app.js"></script>
+</body>
+</html>
