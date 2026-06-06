@@ -1,40 +1,45 @@
 # Hilton Free Night Tracker Pro
 
-A polished mobile-friendly web app for tracking Hilton card spending toward annual free night certificates.
+Mobile-friendly Hilton free night spending tracker.
 
-## Trackers Included
+## Trackers
 
-1. Shane’s Hilton Surpass
-   Goal: $15,000
-   Milestone: 1 free night certificate
+- Shane’s Hilton Surpass: $15,000 annual spending goal
+- Diana’s Hilton Surpass: $15,000 annual spending goal
+- Shane’s Hilton Aspire Card: $30,000 and $60,000 free night milestones
 
-2. Diana’s Hilton Surpass
-   Goal: $15,000
-   Milestone: 1 free night certificate
+## CSV Import
 
-3. Shane’s Hilton Aspire Card
-   Goal: $60,000
-   Milestones:
-   $30,000: first free night certificate
-   $60,000: second free night certificate
+The app supports two CSV formats:
 
-## Features
+1. CSV files exported from this app.
+2. American Express activity CSV files with these columns:
+   - Date
+   - Description
+   - Card Member
+   - Account #
+   - Amount
 
-- Mobile-friendly design
-- iPhone home screen support
-- Dashboard with total Hilton spending
-- Certificates earned count
-- Next certificate amount remaining
-- Manual transaction entry
-- Edit and delete transactions
-- Clear individual cards
-- Reset all trackers for a new calendar year
-- CSV export and import backup
-- Local browser storage
+## Amex Account Routing
 
-## How to Use
+Transactions are routed by Account #:
 
-Open `index.html` in Safari or upload the folder to GitHub Pages, Netlify, or another static web host.
+- -41008 → Shane’s Aspire
+- -41016 → Shane’s Aspire
+- -22005 → Shane’s Surpass
+- -72011 → Shane’s Surpass
+- -71005 → Diana’s Surpass
+- -21031 → Diana’s Surpass
 
-For best iPhone experience, host the files online and then use Safari:
-Share button > Add to Home Screen.
+A prior uploaded Amex CSV used -21015 for Diana’s Surpass, so that account suffix is also included as a fallback.
+
+## Import Behavior
+
+- Duplicate transactions are skipped.
+- Online payment rows are skipped so payments do not reduce spending progress.
+- Refunds or credits that are not payment rows remain in the import and reduce eligible spending.
+- An import summary shows imported rows, skipped rows, duplicates, unknown accounts, and amounts imported by tracker.
+
+## Use
+
+Open `index.html` in a browser. Data is stored locally in the browser.

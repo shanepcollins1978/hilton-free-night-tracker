@@ -1,4 +1,4 @@
-const APP_VERSION = "2.0";
+const APP_VERSION = "2.1";
 
 const TRACKERS = [
   {
@@ -33,6 +33,76 @@ const TRACKERS = [
     ]
   }
 ];
+
+
+const AMEX_ACCOUNT_MAP = {
+  "-41008": "shane-aspire",
+  "-41016": "shane-aspire",
+  "-22005": "shane-surpass",
+  "-72011": "shane-surpass",
+  "-71005": "diana-surpass",
+  "-21031": "diana-surpass",
+  // Included because an uploaded Amex CSV used this account suffix for Diana.
+  "-21015": "diana-surpass"
+};
+
+function normalizeHeader(value) {
+  return String(value || "").trim().toLowerCase();
+}
+
+function parseCsvText(text) {
+  const rows = [];
+  let row = [];
+  let value = "";
+  let inQuotes = false;
+
+  for (let i = 0; i < text.length; i++) {
+    const char = text[i];
+    const next = text[i + 1];
+
+    if (char === '"') {
+      if (inQuotes && next === '"') {
+        value += '"';
+        i++;
+      } else {
+        inQuotes = !inQuotes;
+      }
+    } else if (char === "," && !inQuotes) {
+      row.push(value.trim());
+      value = "";
+    } else if ((char === "\n" || char === "\r") && !inQuotes) {
+      if (char === "\r" && next === "\n") i++;
+      row.push(value.trim());
+      if (row.some(cell => cell !== "")) rows.push(row);
+      row = [];
+      value = "";
+    } else {
+      value += char;
+    }
+  }
+
+  row.push(value.trim());
+  if (row.some(cell => cell !== "")) rows.push(row);
+  return rows;
+}
+
+function formatAmexDate(value) {
+  const text = String(value || "").trim();
+  const match = text.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (!match) return text;
+  const [, month, day, year] = match;
+  return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
+}
+
+function transactionSignature(tx) {
+  return [
+    tx.trackerId,
+    tx.date,
+    String(tx.merchant || "").trim().toLowerCase(),
+    Number(tx.amount || 0).toFixed(2),
+    tx.accountNumber || ""
+  ].join("|");
+}
 
 const money = new Intl.NumberFormat("en-US", {
   style: "currency",
@@ -287,33 +357,105 @@ function exportCsv() {
 function importCsv(file) {
   const reader = new FileReader();
   reader.onload = () => {
-    const text = reader.result;
-    const lines = text.split(/\r?\n/).filter(Boolean).slice(1);
+    const rows = parseCsvText(String(reader.result || ""));
+    if (rows.length < 2) {
+      alert("No transactions found in this CSV.");
+      return;
+    }
 
+    const headers = rows[0].map(normalizeHeader);
     const grouped = Object.fromEntries(TRACKERS.map(t => [t.id, load(t.id)]));
+    const seen = new Set(Object.values(grouped).flat().map(transactionSignature));
 
-    lines.forEach(line => {
-      const columns = line.match(/(".*?"|[^",]+)(?=\s*,|\s*$)/g)?.map(value =>
-        value.replace(/^"|"$/g, "").replaceAll('""', '"')
-      );
+    const indexOf = name => headers.indexOf(name);
+    const trackerIdx = indexOf("trackerid");
+    const dateIdx = indexOf("date");
+    const merchantIdx = headers.includes("merchant") ? indexOf("merchant") : indexOf("description");
+    const amountIdx = indexOf("amount");
+    const accountIdx = indexOf("account #");
 
-      if (!columns || columns.length < 5) return;
+    let imported = 0;
+    let skipped = 0;
+    let duplicates = 0;
+    const totals = Object.fromEntries(TRACKERS.map(t => [t.id, 0]));
+    const unknownAccounts = new Set();
 
-      const [trackerId, , date, merchant, amount] = columns;
-      if (!grouped[trackerId]) return;
+    rows.slice(1).forEach(columns => {
+      let trackerId = "";
+      let date = "";
+      let merchant = "";
+      let amount = 0;
+      let accountNumber = "";
 
-      grouped[trackerId].push({
+      if (trackerIdx >= 0) {
+        trackerId = columns[trackerIdx];
+        date = columns[dateIdx] || "";
+        merchant = columns[merchantIdx] || "";
+        amount = Number(columns[amountIdx]);
+      } else if (accountIdx >= 0) {
+        accountNumber = String(columns[accountIdx] || "").trim();
+        trackerId = AMEX_ACCOUNT_MAP[accountNumber];
+        date = formatAmexDate(columns[dateIdx]);
+        merchant = columns[merchantIdx] || "";
+        amount = Number(columns[amountIdx]);
+
+        if (!trackerId) {
+          unknownAccounts.add(accountNumber || "blank");
+          skipped++;
+          return;
+        }
+
+        if (amount < 0 && merchant.toLowerCase().includes("payment")) {
+          skipped++;
+          return;
+        }
+      } else {
+        skipped++;
+        return;
+      }
+
+      if (!grouped[trackerId] || !date || !Number.isFinite(amount) || amount === 0) {
+        skipped++;
+        return;
+      }
+
+      const tx = {
         id: crypto.randomUUID ? crypto.randomUUID() : String(Date.now() + Math.random()),
         trackerId,
         date,
         merchant,
-        amount: Number(amount)
-      });
+        amount,
+        accountNumber
+      };
+
+      const signature = transactionSignature(tx);
+      if (seen.has(signature)) {
+        duplicates++;
+        return;
+      }
+
+      seen.add(signature);
+      grouped[trackerId].push(tx);
+      totals[trackerId] += amount;
+      imported++;
     });
 
     Object.entries(grouped).forEach(([trackerId, transactions]) => save(trackerId, transactions));
     render();
-    alert("CSV imported.");
+
+    const summary = TRACKERS
+      .filter(t => totals[t.id] !== 0)
+      .map(t => `${t.title}: ${money.format(totals[t.id])}`)
+      .join("\n");
+
+    alert([
+      `CSV import complete.`,
+      `Imported: ${imported}`,
+      `Duplicates skipped: ${duplicates}`,
+      `Other rows skipped: ${skipped}`,
+      summary ? `\nAmounts imported:\n${summary}` : "",
+      unknownAccounts.size ? `\nUnknown account numbers: ${Array.from(unknownAccounts).join(", ")}` : ""
+    ].filter(Boolean).join("\n"));
   };
 
   reader.readAsText(file);
