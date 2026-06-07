@@ -1,4 +1,4 @@
-const STORAGE_KEY = "hiltonFreeNightTrackersV7";
+const STORAGE_KEY = "hiltonFreeNightTrackersV8";
 
 const defaultTrackers = [
   {
@@ -13,7 +13,7 @@ const defaultTrackers = [
     id: "shane-surpass",
     name: "Shane’s Hilton Surpass",
     goal: 15000,
-    accountIds: ["-22005", "-72011"],
+    accountIds: ["-22005", "-21031"],
     transactions: [],
     expanded: false
   },
@@ -21,7 +21,7 @@ const defaultTrackers = [
     id: "diana-surpass",
     name: "Diana’s Hilton Surpass",
     goal: 15000,
-    accountIds: ["-71005", "-21031"],
+    accountIds: ["-71005", "-72011"],
     transactions: [],
     expanded: false
   }
@@ -31,6 +31,11 @@ let trackers = loadTrackers();
 
 document.addEventListener("DOMContentLoaded", () => {
   renderTrackers();
+
+  const csvFile = document.getElementById("csvFile");
+  if (csvFile) {
+    csvFile.addEventListener("change", importCSV);
+  }
 });
 
 function loadTrackers() {
@@ -74,15 +79,29 @@ function normalizeAccount(value) {
 
 function parseAmount(value) {
   if (!value) return 0;
-  const cleaned = String(value)
+
+  const raw = String(value).trim();
+
+  if (!raw) return 0;
+
+  const isNegative =
+    raw.includes("(") ||
+    raw.startsWith("-") ||
+    raw.toLowerCase().includes("credit");
+
+  const cleaned = raw
     .replace(/\$/g, "")
     .replace(/,/g, "")
-    .replace(/\(/g, "-")
+    .replace(/\(/g, "")
     .replace(/\)/g, "")
+    .replace(/[^\d.-]/g, "")
     .trim();
 
   const number = Number(cleaned);
-  return Number.isFinite(number) ? Math.abs(number) : 0;
+
+  if (!Number.isFinite(number)) return 0;
+
+  return Math.abs(number);
 }
 
 function parseCSV(text) {
@@ -108,8 +127,10 @@ function parseCSV(text) {
         row.push(cell);
         rows.push(row);
       }
+
       row = [];
       cell = "";
+
       if (char === "\r" && next === "\n") i++;
     } else {
       cell += char;
@@ -121,19 +142,27 @@ function parseCSV(text) {
     rows.push(row);
   }
 
-  return rows.filter(r => r.some(c => String(c).trim() !== ""));
+  return rows.filter(row => row.some(cell => String(cell).trim() !== ""));
 }
 
 function findColumn(headers, names) {
-  const lowerHeaders = headers.map(h => String(h).trim().toLowerCase());
+  const lowerHeaders = headers.map(header =>
+    String(header || "").trim().toLowerCase()
+  );
 
   for (const name of names) {
-    const index = lowerHeaders.findIndex(h => h === name.toLowerCase());
+    const index = lowerHeaders.findIndex(
+      header => header === name.toLowerCase()
+    );
+
     if (index !== -1) return index;
   }
 
   for (const name of names) {
-    const index = lowerHeaders.findIndex(h => h.includes(name.toLowerCase()));
+    const index = lowerHeaders.findIndex(header =>
+      header.includes(name.toLowerCase())
+    );
+
     if (index !== -1) return index;
   }
 
@@ -141,17 +170,45 @@ function findColumn(headers, names) {
 }
 
 function getTransactionFromRow(headers, row) {
-  const dateIndex = findColumn(headers, ["Date", "Transaction Date", "Posted Date"]);
-  const descriptionIndex = findColumn(headers, ["Description", "Merchant", "Name"]);
-  const amountIndex = findColumn(headers, ["Amount", "Charge", "Debit"]);
-  const accountIndex = findColumn(headers, ["Account #", "Account Number", "Card Number", "Card", "Account"]);
+  const dateIndex = findColumn(headers, [
+    "Date",
+    "Transaction Date",
+    "Posted Date"
+  ]);
 
-  const date = dateIndex >= 0 ? row[dateIndex]?.trim() : "";
-  const description = descriptionIndex >= 0 ? row[descriptionIndex]?.trim() : "";
+  const descriptionIndex = findColumn(headers, [
+    "Description",
+    "Merchant",
+    "Name"
+  ]);
+
+  const amountIndex = findColumn(headers, [
+    "Amount",
+    "Charge",
+    "Debit"
+  ]);
+
+  const accountIndex = findColumn(headers, [
+    "Account #",
+    "Account Number",
+    "Card Number",
+    "Card",
+    "Account"
+  ]);
+
+  const date = dateIndex >= 0 ? String(row[dateIndex] || "").trim() : "";
+  const description =
+    descriptionIndex >= 0 ? String(row[descriptionIndex] || "").trim() : "";
   const amount = amountIndex >= 0 ? parseAmount(row[amountIndex]) : 0;
-  const accountId = accountIndex >= 0 ? normalizeAccount(row[accountIndex]) : "";
+  const accountId =
+    accountIndex >= 0 ? normalizeAccount(row[accountIndex]) : "";
 
-  return { date, description, amount, accountId };
+  return {
+    date,
+    description,
+    amount,
+    accountId
+  };
 }
 
 function makeTransactionKey(transaction) {
@@ -159,7 +216,7 @@ function makeTransactionKey(transaction) {
     transaction.accountId,
     transaction.date,
     transaction.description.toLowerCase().replace(/\s+/g, " ").trim(),
-    transaction.amount.toFixed(2)
+    Number(transaction.amount || 0).toFixed(2)
   ].join("|");
 }
 
@@ -170,12 +227,16 @@ function findTrackerByAccount(accountId) {
 function importCSV() {
   const fileInput = document.getElementById("csvFile");
   const status = document.getElementById("importStatus");
-  const file = fileInput.files?.[0];
+  const file = fileInput?.files?.[0];
+
+  if (!fileInput || !status) return;
 
   if (!file) {
     status.textContent = "Please choose a CSV file first.";
     return;
   }
+
+  status.textContent = "Importing CSV...";
 
   const reader = new FileReader();
 
@@ -190,18 +251,27 @@ function importCSV() {
       }
 
       const headers = rows[0];
+
       let imported = 0;
       let duplicates = 0;
       let skipped = 0;
 
       const existingKeys = new Set(
-        trackers.flatMap(tracker => tracker.transactions.map(makeTransactionKey))
+        trackers.flatMap(tracker =>
+          tracker.transactions.map(transaction =>
+            makeTransactionKey(transaction)
+          )
+        )
       );
 
       rows.slice(1).forEach(row => {
         const transaction = getTransactionFromRow(headers, row);
 
-        if (!transaction.accountId || !transaction.description || !transaction.amount) {
+        if (
+          !transaction.accountId ||
+          !transaction.description ||
+          !transaction.amount
+        ) {
           skipped++;
           return;
         }
@@ -221,7 +291,7 @@ function importCSV() {
         }
 
         tracker.transactions.push({
-          id: crypto.randomUUID ? crypto.randomUUID() : String(Date.now() + Math.random()),
+          id: getUniqueId(),
           ...transaction
         });
 
@@ -251,6 +321,14 @@ function importCSV() {
   reader.readAsText(file);
 }
 
+function getUniqueId() {
+  if (window.crypto && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+
+  return String(Date.now() + Math.random());
+}
+
 function clearAllTransactions() {
   if (!confirm("Clear all saved transactions from this device?")) return;
 
@@ -262,20 +340,26 @@ function clearAllTransactions() {
   saveTrackers();
   renderTrackers();
 
-  document.getElementById("importStatus").textContent = "All transactions cleared.";
+  const status = document.getElementById("importStatus");
+  if (status) {
+    status.textContent = "All transactions cleared.";
+  }
 }
 
 function deleteTransaction(trackerId, transactionId) {
-  const tracker = trackers.find(t => t.id === trackerId);
+  const tracker = trackers.find(tracker => tracker.id === trackerId);
   if (!tracker) return;
 
-  tracker.transactions = tracker.transactions.filter(t => t.id !== transactionId);
+  tracker.transactions = tracker.transactions.filter(
+    transaction => transaction.id !== transactionId
+  );
+
   saveTrackers();
   renderTrackers();
 }
 
 function toggleTracker(trackerId, expanded) {
-  const tracker = trackers.find(t => t.id === trackerId);
+  const tracker = trackers.find(tracker => tracker.id === trackerId);
   if (!tracker) return;
 
   tracker.expanded = expanded;
@@ -285,37 +369,49 @@ function toggleTracker(trackerId, expanded) {
 function renderTrackers() {
   const container = document.getElementById("trackers");
 
-  container.innerHTML = trackers.map(tracker => {
-    const total = tracker.transactions.reduce((sum, t) => sum + t.amount, 0);
-    const remaining = Math.max(tracker.goal - total, 0);
-    const percent = Math.min((total / tracker.goal) * 100, 100);
+  if (!container) return;
 
-    const transactionsHTML = tracker.transactions.length
-      ? tracker.transactions.map(t => `
+  container.innerHTML = trackers
+    .map(tracker => {
+      const total = tracker.transactions.reduce(
+        (sum, transaction) => sum + transaction.amount,
+        0
+      );
+
+      const remaining = Math.max(tracker.goal - total, 0);
+      const percent =
+        tracker.goal > 0 ? Math.min((total / tracker.goal) * 100, 100) : 0;
+
+      const transactionsHTML = tracker.transactions.length
+        ? tracker.transactions
+            .map(
+              transaction => `
           <div class="transaction">
             <div class="transaction-top">
-              <span>${escapeHTML(t.description)}</span>
-              <span>${formatMoney(t.amount)}</span>
+              <span>${escapeHTML(transaction.description)}</span>
+              <span>${formatMoney(transaction.amount)}</span>
             </div>
             <div class="transaction-meta">
-              ${escapeHTML(t.date || "No date")} · Account ${escapeHTML(t.accountId)}
+              ${escapeHTML(transaction.date || "No date")} · Account ${escapeHTML(transaction.accountId)}
             </div>
-            <button type="button" class="danger" onclick="deleteTransaction('${tracker.id}', '${t.id}')">Delete</button>
+            <button type="button" class="danger" onclick="deleteTransaction('${tracker.id}', '${transaction.id}')">Delete</button>
           </div>
-        `).join("")
-      : `<p class="empty">No transactions imported yet.</p>`;
+        `
+            )
+            .join("")
+        : `<p class="empty">No transactions imported yet.</p>`;
 
-    return `
+      return `
       <article class="tracker-card">
         <div class="tracker-header">
           <div>
-            <h2 class="tracker-title">${tracker.name}</h2>
+            <h2 class="tracker-title">${escapeHTML(tracker.name)}</h2>
             <p class="account-list">Accounts: ${tracker.accountIds.join(", ")}</p>
           </div>
           <strong>${percent.toFixed(1)}%</strong>
         </div>
 
-        <div class="progress-shell" aria-label="${tracker.name} progress">
+        <div class="progress-shell" aria-label="${escapeHTML(tracker.name)} progress">
           <div class="progress-fill" style="width: ${percent}%"></div>
         </div>
 
@@ -342,7 +438,8 @@ function renderTrackers() {
         </details>
       </article>
     `;
-  }).join("");
+    })
+    .join("");
 }
 
 function escapeHTML(value) {
