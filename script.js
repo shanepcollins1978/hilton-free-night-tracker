@@ -1,4 +1,4 @@
-const STORAGE_KEY = "hiltonFreeNightTrackersV11";
+const STORAGE_KEY = "hiltonFreeNightTrackersV12";
 
 const defaultTrackers = [
   {
@@ -13,7 +13,7 @@ const defaultTrackers = [
     id: "shane-surpass",
     name: "Shane’s Hilton Surpass",
     goal: 15000,
-    accountIds: ["-22005", "-21031"],
+    accountIds: ["-22005", "-21031", "-21015"],
     transactions: [],
     expanded: false
   },
@@ -95,7 +95,6 @@ function parseAmount(value) {
 
   if (!Number.isFinite(amount)) return 0;
 
-  // Removes credits, refunds, payments, and negative amounts
   if (amount <= 0) return 0;
 
   return amount;
