@@ -1,11 +1,11 @@
-const STORAGE_KEY = "hiltonFreeNightTrackersV9";
+const STORAGE_KEY = "hiltonFreeNightTrackersV11";
 
 const defaultTrackers = [
   {
     id: "shane-aspire",
     name: "Shane’s Hilton Aspire",
     goal: 60000,
-    accountIds: ["-41008"],
+    accountIds: ["-41008", "-41016"],
     transactions: [],
     expanded: false
   },
@@ -13,7 +13,7 @@ const defaultTrackers = [
     id: "shane-surpass",
     name: "Shane’s Hilton Surpass",
     goal: 15000,
-    accountIds: ["-22005"],
+    accountIds: ["-22005", "-21031"],
     transactions: [],
     expanded: false
   },
@@ -21,7 +21,7 @@ const defaultTrackers = [
     id: "diana-surpass",
     name: "Diana’s Hilton Surpass",
     goal: 15000,
-    accountIds: ["-71005"],
+    accountIds: ["-71005", "-72011"],
     transactions: [],
     expanded: false
   }
@@ -88,15 +88,17 @@ function parseAmount(value) {
   const cleaned = raw
     .replace(/\$/g, "")
     .replace(/,/g, "")
-    .replace(/\(/g, "")
-    .replace(/\)/g, "")
     .replace(/[^\d.-]/g, "")
     .trim();
 
-  const number = Number(cleaned);
-  if (!Number.isFinite(number)) return 0;
+  const amount = Number(cleaned);
 
-  return Math.abs(number);
+  if (!Number.isFinite(amount)) return 0;
+
+  // Removes credits, refunds, payments, and negative amounts
+  if (amount <= 0) return 0;
+
+  return amount;
 }
 
 function parseCSV(text) {
@@ -266,7 +268,7 @@ function importCSV() {
         if (
           !transaction.accountId ||
           !transaction.description ||
-          !transaction.amount
+          transaction.amount <= 0
         ) {
           skipped++;
           return;
@@ -310,7 +312,7 @@ function importCSV() {
       saveTrackers();
       renderTrackers();
 
-      status.textContent = `Imported ${imported} transaction(s). Skipped ${duplicates} duplicate(s) and ${skipped} unmatched row(s).`;
+      status.textContent = `Imported ${imported} transaction(s). Skipped ${duplicates} duplicate(s) and ${skipped} unmatched or negative row(s).`;
       fileInput.value = "";
     } catch (error) {
       status.textContent =
