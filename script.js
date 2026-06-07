@@ -1,11 +1,11 @@
-const STORAGE_KEY = "hiltonFreeNightTrackersV8";
+const STORAGE_KEY = "hiltonFreeNightTrackersV9";
 
 const defaultTrackers = [
   {
     id: "shane-aspire",
     name: "Shane’s Hilton Aspire",
     goal: 60000,
-    accountIds: ["-41008", "-41016"],
+    accountIds: ["-41008"],
     transactions: [],
     expanded: false
   },
@@ -13,7 +13,7 @@ const defaultTrackers = [
     id: "shane-surpass",
     name: "Shane’s Hilton Surpass",
     goal: 15000,
-    accountIds: ["-22005", "-21031"],
+    accountIds: ["-22005"],
     transactions: [],
     expanded: false
   },
@@ -21,7 +21,7 @@ const defaultTrackers = [
     id: "diana-surpass",
     name: "Diana’s Hilton Surpass",
     goal: 15000,
-    accountIds: ["-71005", "-72011"],
+    accountIds: ["-71005"],
     transactions: [],
     expanded: false
   }
@@ -47,6 +47,7 @@ function loadTrackers() {
 
     return defaultTrackers.map(defaultTracker => {
       const existing = parsed.find(t => t.id === defaultTracker.id);
+
       return {
         ...defaultTracker,
         transactions: existing?.transactions || [],
@@ -71,23 +72,18 @@ function formatMoney(value) {
 
 function normalizeAccount(value) {
   if (!value) return "";
+
   const digits = String(value).replace(/[^0-9]/g, "");
   if (!digits) return "";
-  const lastFive = digits.slice(-5);
-  return "-" + lastFive;
+
+  return "-" + digits.slice(-5);
 }
 
 function parseAmount(value) {
   if (!value) return 0;
 
   const raw = String(value).trim();
-
   if (!raw) return 0;
-
-  const isNegative =
-    raw.includes("(") ||
-    raw.startsWith("-") ||
-    raw.toLowerCase().includes("credit");
 
   const cleaned = raw
     .replace(/\$/g, "")
@@ -98,7 +94,6 @@ function parseAmount(value) {
     .trim();
 
   const number = Number(cleaned);
-
   if (!Number.isFinite(number)) return 0;
 
   return Math.abs(number);
@@ -142,7 +137,9 @@ function parseCSV(text) {
     rows.push(row);
   }
 
-  return rows.filter(row => row.some(cell => String(cell).trim() !== ""));
+  return rows.filter(row =>
+    row.some(cell => String(cell).trim() !== "")
+  );
 }
 
 function findColumn(headers, names) {
@@ -196,18 +193,15 @@ function getTransactionFromRow(headers, row) {
     "Account"
   ]);
 
-  const date = dateIndex >= 0 ? String(row[dateIndex] || "").trim() : "";
-  const description =
-    descriptionIndex >= 0 ? String(row[descriptionIndex] || "").trim() : "";
-  const amount = amountIndex >= 0 ? parseAmount(row[amountIndex]) : 0;
-  const accountId =
-    accountIndex >= 0 ? normalizeAccount(row[accountIndex]) : "";
-
   return {
-    date,
-    description,
-    amount,
-    accountId
+    date: dateIndex >= 0 ? String(row[dateIndex] || "").trim() : "",
+    description:
+      descriptionIndex >= 0
+        ? String(row[descriptionIndex] || "").trim()
+        : "",
+    amount: amountIndex >= 0 ? parseAmount(row[amountIndex]) : 0,
+    accountId:
+      accountIndex >= 0 ? normalizeAccount(row[accountIndex]) : ""
   };
 }
 
@@ -221,7 +215,9 @@ function makeTransactionKey(transaction) {
 }
 
 function findTrackerByAccount(accountId) {
-  return trackers.find(tracker => tracker.accountIds.includes(accountId));
+  return trackers.find(tracker =>
+    tracker.accountIds.includes(accountId)
+  );
 }
 
 function importCSV() {
@@ -300,7 +296,15 @@ function importCSV() {
       });
 
       trackers.forEach(tracker => {
-        tracker.transactions.sort((a, b) => new Date(b.date) - new Date(a.date));
+        tracker.transactions.sort((a, b) => {
+          const dateA = new Date(a.date);
+          const dateB = new Date(b.date);
+
+          if (Number.isNaN(dateA.getTime())) return 1;
+          if (Number.isNaN(dateB.getTime())) return -1;
+
+          return dateB - dateA;
+        });
       });
 
       saveTrackers();
@@ -309,7 +313,8 @@ function importCSV() {
       status.textContent = `Imported ${imported} transaction(s). Skipped ${duplicates} duplicate(s) and ${skipped} unmatched row(s).`;
       fileInput.value = "";
     } catch (error) {
-      status.textContent = "Import failed. Please confirm this is an Amex CSV file.";
+      status.textContent =
+        "Import failed. Please confirm this is an Amex CSV file.";
       console.error(error);
     }
   };
@@ -368,7 +373,6 @@ function toggleTracker(trackerId, expanded) {
 
 function renderTrackers() {
   const container = document.getElementById("trackers");
-
   if (!container) return;
 
   container.innerHTML = trackers
@@ -380,7 +384,9 @@ function renderTrackers() {
 
       const remaining = Math.max(tracker.goal - total, 0);
       const percent =
-        tracker.goal > 0 ? Math.min((total / tracker.goal) * 100, 100) : 0;
+        tracker.goal > 0
+          ? Math.min((total / tracker.goal) * 100, 100)
+          : 0;
 
       const transactionsHTML = tracker.transactions.length
         ? tracker.transactions
@@ -420,10 +426,12 @@ function renderTrackers() {
             <div class="stat-label">Year to date</div>
             <div class="stat-value">${formatMoney(total)}</div>
           </div>
+
           <div class="stat">
             <div class="stat-label">Goal</div>
             <div class="stat-value">${formatMoney(tracker.goal)}</div>
           </div>
+
           <div class="stat">
             <div class="stat-label">Remaining</div>
             <div class="stat-value">${formatMoney(remaining)}</div>
