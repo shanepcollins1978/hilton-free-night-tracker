@@ -1,0 +1,221 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: Arial, Helvetica, sans-serif;
+  background: #f3f6fb;
+  color: #172033;
+}
+
+.app {
+  width: min(100%, 920px);
+  margin: 0 auto;
+  padding: 18px;
+}
+
+.hero {
+  background: linear-gradient(135deg, #104c97, #0d75c9);
+  color: white;
+  border-radius: 22px;
+  padding: 24px;
+  margin-bottom: 18px;
+  box-shadow: 0 10px 28px rgba(16, 76, 151, 0.22);
+}
+
+.eyebrow {
+  margin: 0 0 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 0.78rem;
+  opacity: 0.85;
+}
+
+h1, h2, h3, p {
+  margin-top: 0;
+}
+
+h1 {
+  margin-bottom: 8px;
+  font-size: clamp(2rem, 8vw, 3.2rem);
+}
+
+.subhead {
+  margin-bottom: 0;
+  line-height: 1.4;
+  opacity: 0.92;
+}
+
+.panel, .tracker-card {
+  background: white;
+  border-radius: 18px;
+  padding: 18px;
+  margin-bottom: 16px;
+  box-shadow: 0 8px 24px rgba(20, 35, 65, 0.08);
+}
+
+.hint {
+  color: #5b6678;
+  font-size: 0.94rem;
+  line-height: 1.4;
+}
+
+input[type="file"] {
+  width: 100%;
+  margin: 10px 0 14px;
+  padding: 12px;
+  background: #f7f9fc;
+  border: 1px solid #d7deea;
+  border-radius: 12px;
+}
+
+.button-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+button {
+  border: 0;
+  border-radius: 12px;
+  padding: 12px 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.primary {
+  background: #104c97;
+  color: white;
+}
+
+.secondary {
+  background: #e9eef7;
+  color: #17365d;
+}
+
+.danger {
+  background: #f6dede;
+  color: #8a1f1f;
+}
+
+.status {
+  margin: 12px 0 0;
+  font-weight: 700;
+  color: #104c97;
+}
+
+.tracker-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+  margin-bottom: 10px;
+}
+
+.tracker-title {
+  margin-bottom: 4px;
+}
+
+.account-list {
+  margin: 0;
+  color: #5b6678;
+  font-size: 0.9rem;
+}
+
+.progress-shell {
+  width: 100%;
+  height: 18px;
+  background: #e8edf5;
+  border-radius: 999px;
+  overflow: hidden;
+  margin: 12px 0;
+}
+
+.progress-fill {
+  height: 100%;
+  background: #104c97;
+  border-radius: 999px;
+  width: 0%;
+  transition: width 0.25s ease;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin: 12px 0;
+}
+
+.stat {
+  background: #f7f9fc;
+  border: 1px solid #e2e8f2;
+  border-radius: 14px;
+  padding: 12px;
+}
+
+.stat-label {
+  color: #5b6678;
+  font-size: 0.8rem;
+  margin-bottom: 4px;
+}
+
+.stat-value {
+  font-weight: 800;
+  font-size: 1rem;
+}
+
+details {
+  margin-top: 12px;
+}
+
+summary {
+  cursor: pointer;
+  font-weight: 800;
+  color: #104c97;
+}
+
+.transaction-list {
+  margin-top: 12px;
+  display: grid;
+  gap: 8px;
+}
+
+.transaction {
+  border: 1px solid #e0e7f1;
+  border-radius: 12px;
+  padding: 10px;
+  display: grid;
+  gap: 4px;
+}
+
+.transaction-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-weight: 800;
+}
+
+.transaction-meta {
+  color: #5b6678;
+  font-size: 0.85rem;
+}
+
+.empty {
+  color: #69758a;
+  font-style: italic;
+}
+
+@media (max-width: 640px) {
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .tracker-header {
+    display: block;
+  }
+
+  .button-row button {
+    width: 100%;
+  }
+}
