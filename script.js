@@ -5,7 +5,7 @@ const defaultTrackers = [
     id: "shane-aspire",
     name: "Shane’s Hilton Aspire",
     goal: 60000,
-    accountIds: ["41008", "41016"],
+    accountIds: ["-41008", "-41016"],
     transactions: [],
     expanded: false
   },
@@ -13,7 +13,7 @@ const defaultTrackers = [
     id: "shane-surpass",
     name: "Shane’s Hilton Surpass",
     goal: 15000,
-    accountIds: ["22005", "72011"],
+    accountIds: ["-22005", "-72011"],
     transactions: [],
     expanded: false
   },
@@ -21,7 +21,7 @@ const defaultTrackers = [
     id: "diana-surpass",
     name: "Diana’s Hilton Surpass",
     goal: 15000,
-    accountIds: ["71005", "21031"],
+    accountIds: ["-71005", "-21031"],
     transactions: [],
     expanded: false
   }
