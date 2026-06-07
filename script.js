@@ -1,11 +1,15 @@
-const STORAGE_KEY = "hiltonFreeNightTrackersV4";
+const STORAGE_KEY = "hiltonFreeNightTrackersV5";
 
 const defaultTrackers = [
   {
     id: "shane-aspire",
     name: "Shane’s Hilton Aspire",
     goal: 60000,
-    accountIds: ["-41008", "-41016"],
+    milestones: [
+      { label: "Free Night 1", amount: 30000 },
+      { label: "Free Night 2", amount: 60000 }
+    ],
+    accountIds: ["41008", "41016"],
     transactions: [],
     expanded: false
   },
@@ -13,7 +17,10 @@ const defaultTrackers = [
     id: "shane-surpass",
     name: "Shane’s Hilton Surpass",
     goal: 15000,
-    accountIds: ["-22005", "-72011"],
+    milestones: [
+      { label: "Free Night", amount: 15000 }
+    ],
+    accountIds: ["22005", "72011"],
     transactions: [],
     expanded: false
   },
@@ -21,7 +28,10 @@ const defaultTrackers = [
     id: "diana-surpass",
     name: "Diana’s Hilton Surpass",
     goal: 15000,
-    accountIds: ["-71005", "-21031"],
+    milestones: [
+      { label: "Free Night", amount: 15000 }
+    ],
+    accountIds: ["71005", "21031"],
     transactions: [],
     expanded: false
   }
@@ -76,12 +86,21 @@ function normalizeAccount(value) {
 
 function normalizeAmount(value) {
   if (typeof value === "number") return value;
-  const clean = String(value || "")
+
+  const raw = String(value || "").trim();
+  const isParenthesesNegative = raw.includes("(") && raw.includes(")");
+
+  const clean = raw
     .replace(/[$,]/g, "")
-    .replace(/[()]/g, "-")
+    .replace(/[()]/g, "")
     .trim();
-  const amount = Number.parseFloat(clean);
-  return Number.isFinite(amount) ? Math.abs(amount) : 0;
+
+  let amount = Number.parseFloat(clean);
+  if (!Number.isFinite(amount)) return 0;
+
+  if (isParenthesesNegative) amount = amount * -1;
+
+  return amount;
 }
 
 function normalizeHeader(header) {
@@ -143,6 +162,7 @@ function parseCSV(text) {
 
   current.push(value);
   if (current.some(cell => String(cell).trim() !== "")) rows.push(current);
+
   return rows;
 }
 
@@ -193,6 +213,7 @@ function importCSV() {
   }
 
   const reader = new FileReader();
+
   reader.onload = event => {
     const text = event.target.result;
     const rows = parseCSV(text);
@@ -220,7 +241,13 @@ function importCSV() {
         return;
       }
 
+      if (transaction.amount <= 0) {
+        skipped++;
+        return;
+      }
+
       const tracker = findTrackerByAccount(transaction.account);
+
       if (!tracker) {
         unknownAccounts.add(transaction.account);
         skipped++;
@@ -228,6 +255,7 @@ function importCSV() {
       }
 
       const key = makeTransactionKey(transaction);
+
       if (existingKeys.has(key)) {
         duplicates++;
         return;
@@ -250,7 +278,7 @@ function importCSV() {
       ? ` Unknown account(s): ${Array.from(unknownAccounts).join(", ")}.`
       : "";
 
-    status.textContent = `Imported ${imported} transaction(s). Skipped ${duplicates} duplicate(s) and ${skipped} unmatched row(s).${unknownMessage}`;
+    status.textContent = `Imported ${imported} transaction(s). Skipped ${duplicates} duplicate(s) and ${skipped} unmatched, payment, or credit row(s).${unknownMessage}`;
   };
 
   reader.readAsText(file);
@@ -279,6 +307,31 @@ function clearAllTransactions() {
   document.getElementById("importStatus").textContent = "All transactions cleared.";
 }
 
+function renderMilestones(tracker, total) {
+  return `
+    <div class="milestones">
+      ${tracker.milestones.map(milestone => {
+        const earned = total >= milestone.amount;
+        const remaining = Math.max(milestone.amount - total, 0);
+        const percent = Math.min((total / milestone.amount) * 100, 100);
+
+        return `
+          <div class="milestone">
+            <div class="milestone-header">
+              <strong>${milestone.label}</strong>
+              <span>${earned ? "Earned ✅" : `${formatMoney(remaining)} remaining`}</span>
+            </div>
+            <div class="progress-shell small">
+              <div class="progress-bar" style="width:${percent}%"></div>
+            </div>
+            <div class="milestone-meta">${formatMoney(milestone.amount)} target</div>
+          </div>
+        `;
+      }).join("")}
+    </div>
+  `;
+}
+
 function renderTrackers() {
   const container = document.getElementById("trackers");
   container.innerHTML = "";
@@ -291,6 +344,7 @@ function renderTrackers() {
 
     const card = document.createElement("article");
     card.className = "tracker-card";
+
     card.innerHTML = `
       <div class="tracker-header">
         <div>
@@ -309,6 +363,8 @@ function renderTrackers() {
       <div class="progress-shell" aria-label="Progress toward goal">
         <div class="progress-bar" style="width:${percent}%"></div>
       </div>
+
+      ${renderMilestones(tracker, total)}
 
       <div class="transaction-tools">
         <button type="button" class="secondary" onclick="toggleTransactions('${tracker.id}')">
